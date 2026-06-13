@@ -1,0 +1,18 @@
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+
+# Generated artifacts (regenerate via scripts/)
+data/raw_videos/*
+data/features/*
+data/segments/*
+data/index/*
+data/annotations/*
+checkpoints/*
+!data/raw_videos/.gitkeep
+!data/features/.gitkeep
+!data/segments/.gitkeep
+!data/index/.gitkeep
+!data/annotations/.gitkeep
+!checkpoints/.gitkeep

@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Concept-Aware Lecture Video Retrieval</title>
+  <meta name="description" content="Search lecture videos by concept and jump directly to the moment it's explained." />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0b0f;
+      --surface: #12141c;
+      --surface-hover: #1a1d28;
+      --border: #22263a;
+      --text: #e8eaf0;
+      --muted: #8b92a8;
+      --accent: #6c8cff;
+      --accent-glow: rgba(108, 140, 255, 0.15);
+      --accent-strong: rgba(108, 140, 255, 0.25);
+      --green: #34d399;
+      --yellow: #fbbf24;
+      --red: #f87171;
+      --radius: 14px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    /* Background gradient orb */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -200px; left: 50%;
+      transform: translateX(-50%);
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(108,140,255,0.08) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 56px 24px 100px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Header */
+    header { margin-bottom: 36px; }
+    .logo-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+    .logo-icon {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--accent), #a78bfa);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; color: #fff; font-weight: 700;
+    }
+    header h1 {
+      font-size: 1.55rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      background: linear-gradient(90deg, var(--text), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    header p {
+      color: var(--muted);
+      font-size: 0.92rem;
+      line-height: 1.5;
+    }
+
+    /* System status */
+    .system-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-bottom: 20px;
+      padding: 6px 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+    }
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    .status-dot.offline { background: var(--red); animation: none; }
+    .status-dot.warning { background: var(--yellow); }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* Search */
+    .search-wrapper {
+      position: relative;
+      display: flex;
+      gap: 10px;
+    }
+    .search-wrapper input {
+      flex: 1;
+      padding: 15px 18px;
+      padding-left: 44px;
+      border-radius: var(--radius);
+      border: 1.5px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 0.98rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .search-wrapper input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    .search-wrapper input::placeholder { color: var(--muted); }
+    .search-icon {
+      position: absolute;
+      left: 15px; top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      pointer-events: none;
+    }
+    .search-wrapper button {
+      padding: 15px 28px;
+      border-radius: var(--radius);
+      border: none;
+      background: linear-gradient(135deg, var(--accent), #818cf8);
+      color: #fff;
+      font-size: 0.95rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+      white-space: nowrap;
+    }
+    .search-wrapper button:hover { opacity: 0.9; transform: translateY(-1px); }
+    .search-wrapper button:active { transform: translateY(0); }
+    .search-wrapper button:disabled { opacity: 0.45; cursor: default; transform: none; }
+
+    /* Example queries */
+    .examples {
+      margin-top: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .examples button {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 7px 16px;
+      font-size: 0.8rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .examples button:hover {
+      color: var(--text);
+      border-color: var(--accent);
+      background: var(--accent-glow);
+    }
+
+    /* Status */
+    .status {
+      margin-top: 24px;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+    .status .count { color: var(--text); font-weight: 600; }
+    .status .query-echo { color: var(--accent); }
+
+    /* Results */
+    .results {
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .result-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .result-card:hover {
+      border-color: rgba(108, 140, 255, 0.3);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.25);
+    }
+
+    .result-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 6px;
+    }
+    .result-rank {
+      width: 28px; height: 28px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 8px;
+      background: var(--accent-glow);
+      color: var(--accent);
+      font-size: 0.78rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .result-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .result-badge {
+      font-size: 0.72rem;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .badge-high { background: rgba(52, 211, 153, 0.15); color: var(--green); }
+    .badge-med  { background: rgba(251, 191, 36, 0.15); color: var(--yellow); }
+    .badge-low  { background: rgba(248, 113, 113, 0.15); color: var(--red); }
+
+    .result-time {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      color: var(--accent);
+      font-weight: 600;
+      margin: 8px 0;
+    }
+    .result-time a {
+      color: inherit;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      background: var(--accent-glow);
+      border-radius: 8px;
+      transition: background 0.15s;
+    }
+    .result-time a:hover { background: var(--accent-strong); }
+
+    .result-snippet {
+      font-size: 0.83rem;
+      color: var(--muted);
+      line-height: 1.6;
+      margin-top: 4px;
+    }
+    .result-snippet strong { color: var(--text); font-weight: 600; }
+
+    .result-mode {
+      display: inline-block;
+      font-size: 0.7rem;
+      color: var(--muted);
+      background: rgba(139, 146, 168, 0.1);
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-top: 8px;
+    }
+
+    /* Low confidence warning */
+    .low-confidence-warning {
+      margin-top: 16px;
+      padding: 12px 16px;
+      background: rgba(251, 191, 36, 0.08);
+      border: 1px solid rgba(251, 191, 36, 0.2);
+      border-radius: 10px;
+      font-size: 0.82rem;
+      color: var(--yellow);
+      display: none;
+    }
+
+    /* Empty state */
+    .empty-state {
+      margin-top: 80px;
+      text-align: center;
+      color: var(--muted);
+    }
+    .empty-state .emoji {
+      font-size: 3rem;
+      margin-bottom: 12px;
+      opacity: 0.5;
+    }
+
+    /* Loading spinner */
+    .spinner {
+      display: inline-block;
+      width: 16px; height: 16px;
+      border: 2px solid var(--muted);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 600px) {
+      .container { padding: 32px 16px 60px; }
+      header h1 { font-size: 1.3rem; }
+      .search-wrapper { flex-direction: column; }
+      .search-wrapper button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo-row">
+        <div class="logo-icon">C</div>
+        <h1>Concept-Aware Lecture Retrieval</h1>
+      </div>
+      <p>Search across your indexed lecture corpus by concept. Type a question or topic and jump directly to the moment it's explained.</p>
+    </header>
+
+    <div id="systemStatus" class="system-status">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="statusText">Checking system...</span>
+    </div>
+
+    <div class="search-wrapper">
+      <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="query" type="text" placeholder="e.g. explain backpropagation with an example" autocomplete="off" />
+      <button id="searchBtn" onclick="runSearch()">Search</button>
+    </div>
+
+    <div class="examples" id="examplesRow">
+      <button onclick="setQuery('binary search invariant')">binary search invariant</button>
+      <button onclick="setQuery('GCD algorithm Euclid')">GCD algorithm Euclid</button>
+      <button onclick="setQuery('queue data structure')">queue data structure</button>
+      <button onclick="setQuery('shortest path in a grid')">shortest path in a grid</button>
+      <button onclick="setQuery('range minimum query')">range minimum query</button>
+      <button onclick="setQuery('red black tree')">red black tree</button>
+    </div>
+
+    <div id="lowConfWarning" class="low-confidence-warning">
+      ⚠️ These results have low confidence scores. The search model may need more training data for better accuracy. Results are ranked by text similarity as a fallback.
+    </div>
+
+    <div id="status" class="status"></div>
+    <div id="results" class="results"></div>
+  </div>
+
+  <script>
+    const API_BASE = "";
+
+    // --- System health check ---
+    async function checkHealth() {
+      const dot = document.getElementById("statusDot");
+      const txt = document.getElementById("statusText");
+      try {
+        const res = await fetch(`${API_BASE}/api/health`);
+        const data = await res.json();
+        if (data.index_ready && data.retriever_loaded) {
+          dot.className = "status-dot";
+          txt.textContent = `Online · ${data.num_segments} segments indexed`;
+        } else if (data.index_ready) {
+          dot.className = "status-dot warning";
+          txt.textContent = "Index ready but retriever loading...";
+        } else {
+          dot.className = "status-dot offline";
+          txt.textContent = "Index not built — run the pipeline first";
+        }
+      } catch {
+        dot.className = "status-dot offline";
+        txt.textContent = "API offline — start the server with uvicorn";
+      }
+    }
+    checkHealth();
+
+    // --- Search ---
+    function setQuery(q) {
+      document.getElementById("query").value = q;
+      runSearch();
+    }
+
+    document.getElementById("query").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") runSearch();
+    });
+
+    async function runSearch() {
+      const query = document.getElementById("query").value.trim();
+      const statusEl = document.getElementById("status");
+      const resultsEl = document.getElementById("results");
+      const btn = document.getElementById("searchBtn");
+      const warningEl = document.getElementById("lowConfWarning");
+
+      if (!query) return;
+
+      btn.disabled = true;
+      warningEl.style.display = "none";
+      statusEl.innerHTML = `<span class="spinner"></span> Searching the lecture corpus...`;
+      resultsEl.innerHTML = "";
+
+      try {
+        const res = await fetch(`${API_BASE}/api/search?q=${encodeURIComponent(query)}&top_k=8`);
+        if (!res.ok) throw new Error(`Server returned ${res.status}`);
+        const data = await res.json();
+
+        if (data.error) {
+          statusEl.textContent = `Error: ${data.error}`;
+          return;
+        }
+
+        if (!data.results || data.results.length === 0) {
+          statusEl.textContent = "";
+          resultsEl.innerHTML = `
+            <div class="empty-state">
+              <div class="emoji">🔍</div>
+              <p>No results found for "${escapeHtml(query)}".</p>
+              <p style="margin-top:8px; font-size:0.82rem;">Make sure the index has been built.</p>
+            </div>`;
+          return;
+        }
+
+        // Check confidence
+        const avgScore = data.results.reduce((s, r) => s + r.score, 0) / data.results.length;
+        if (avgScore < 0.2) {
+          warningEl.style.display = "block";
+        }
+
+        statusEl.innerHTML = `<span class="count">${data.results.length}</span> result(s) for <span class="query-echo">"${escapeHtml(data.query)}"</span>`;
+        resultsEl.innerHTML = data.results.map((r, i) => renderResult(r, i)).join("");
+      } catch (err) {
+        statusEl.textContent = `Error: ${err.message}`;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function renderResult(r, idx) {
+      const score = r.score;
+      let badgeClass, badgeText;
+      if (score >= 0.4) { badgeClass = "badge-high"; badgeText = `★ ${score.toFixed(2)}`; }
+      else if (score >= 0.2) { badgeClass = "badge-med"; badgeText = `${score.toFixed(2)}`; }
+      else { badgeClass = "badge-low"; badgeText = `${score.toFixed(2)}`; }
+
+      const videoName = r.video_id.length > 40
+        ? r.video_id.substring(0, 37) + "..."
+        : r.video_id;
+
+      const mode = r.search_mode === "text_similarity" ? "text match"
+                 : r.search_mode === "hybrid" ? "hybrid"
+                 : "model";
+
+      const transcript = r.transcript_text
+        ? escapeHtml(r.transcript_text.substring(0, 250)) + (r.transcript_text.length > 250 ? "..." : "")
+        : "(no transcript)";
+
+      const ocrText = r.ocr_text
+        ? escapeHtml(r.ocr_text.substring(0, 200)) + (r.ocr_text.length > 200 ? "..." : "")
+        : "(no OCR text)";
+
+      return `
+        <div class="result-card">
+          <div class="result-head">
+            <div class="result-rank">${idx + 1}</div>
+            <div class="result-title" title="${escapeHtml(r.video_id)}">${escapeHtml(videoName)}</div>
+            <div class="result-badge ${badgeClass}">${badgeText}</div>
+          </div>
+          <div class="result-time">
+            <a href="${r.jump_link}" target="_blank">
+              ▶ ${r.start_time_str} – ${r.end_time_str}
+            </a>
+          </div>
+          <div class="result-snippet"><strong>Transcript:</strong> ${transcript}</div>
+          <div class="result-snippet" style="margin-top:4px;"><strong>Board/Slide:</strong> ${ocrText}</div>
+          <div class="result-mode">${mode}</div>
+        </div>
+      `;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return "";
+      return str.replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[c]));
+    }
+  </script>
+</body>
+</html>

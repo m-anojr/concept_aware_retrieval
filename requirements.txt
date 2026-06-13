@@ -1,0 +1,33 @@
+# Core
+numpy>=1.24
+scipy>=1.10
+tqdm>=4.66
+pyyaml>=6.0
+
+# Deep learning
+torch>=2.1
+torchvision>=0.16
+
+# Multimodal models (frozen, used for feature extraction)
+transformers>=4.38
+sentence-transformers>=2.5
+openai-whisper>=20231117
+
+# OCR
+easyocr>=1.7
+pytesseract>=0.3.10
+
+# Vision / video processing
+opencv-python>=4.9
+scenedetect[opencv]>=0.6.3
+
+# Vector search
+faiss-cpu>=1.7.4
+
+# Web app / demo
+fastapi>=0.110
+uvicorn[standard]>=0.27
+pydantic>=2.6
+
+# Plotting (for evaluation reports)
+matplotlib>=3.8
