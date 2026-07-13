@@ -129,14 +129,18 @@ class LectureRetriever:
         # --- Text-similarity fallback search ---
         text_results = self._text_similarity_search(query, top_k)
 
-        # If the model scores are very low (< 0.15 mean), prefer text search.
-        # Otherwise, combine: weight model scores higher but merge text matches in.
+        # If the model scores are very low (< 0.15 mean), it is untrained.
+        # If the variance is extremely low (< 0.001) or scores are too high (> 0.85),
+        # the model has collapsed due to overfitting on a small dataset.
         if not faiss_results:
             return self._finalize_results(text_results, video_url_template)
 
-        avg_faiss_score = np.mean([r["score"] for r in faiss_results]) if faiss_results else 0
-        if avg_faiss_score < 0.15:
-            # Model is not confident — use text similarity as primary
+        scores_arr = [r["score"] for r in faiss_results]
+        avg_faiss_score = np.mean(scores_arr)
+        variance = np.var(scores_arr)
+
+        if avg_faiss_score < 0.15 or avg_faiss_score > 0.85 or variance < 0.001:
+            # Model is untrained or collapsed — use text similarity as primary
             return self._finalize_results(text_results, video_url_template)
 
         # Merge: model results are primary, boosted by text similarity

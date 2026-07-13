@@ -267,3 +267,5 @@ uvicorn app.backend.main:app --reload --port 8000
 
   .\.venv\Scripts\python.exe scripts\run_full_pipeline.py --skip-training
 
+   uvicorn app.backend.main:app --reload --port 8000
+
