@@ -41,7 +41,18 @@ class EasyOCRBackend(BaseOCRBackend):
         self.reader = easyocr.Reader(languages or ["en"], gpu=gpu)
 
     def read_text(self, frame: np.ndarray) -> str:
-        results = self.reader.readtext(frame, detail=0, paragraph=True)
+        import cv2
+        # Convert to grayscale
+        gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+        
+        # Apply CLAHE (Contrast Limited Adaptive Histogram Equalization)
+        # This dramatically improves contrast for handwriting on chalkboards,
+        # whiteboards, and digital tablets (e.g. OneNote screen recordings)
+        # regardless of whether it's light mode or dark mode.
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        enhanced = clahe.apply(gray)
+        
+        results = self.reader.readtext(enhanced, detail=0, paragraph=True)
         return " ".join(results)
 
 

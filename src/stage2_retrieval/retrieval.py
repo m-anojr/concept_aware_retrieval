@@ -28,6 +28,7 @@ class LectureRetriever:
                  checkpoint_path: str = None,
                  device: str = "cpu"):
         import faiss
+        import time
 
         checkpoint_path = checkpoint_path or os.path.join(PATHS.checkpoints_dir, "stage2_retrieval_model.pt")
 
@@ -37,6 +38,23 @@ class LectureRetriever:
         # Load FAISS index and metadata
         self.index = faiss.read_index(os.path.join(index_dir, "segments.index"))
         self.metadata: List[Dict] = load_json(os.path.join(index_dir, "segments_metadata.json"))
+
+        # Precompute fallback text embeddings at startup for sub-second search latency
+        t0 = time.time()
+        print(f"[LectureRetriever] Pre-computing fallback text embeddings for {len(self.metadata)} segments...")
+        
+        texts_to_encode = []
+        for meta in self.metadata:
+            text = (meta.get("transcript_text", "") + " " + meta.get("ocr_text", "")).strip()
+            texts_to_encode.append(text if text else " ")
+            
+        if texts_to_encode:
+            embeds = self.text_encoder.encode(texts_to_encode)
+            self.segment_text_embeddings = embeds / (np.linalg.norm(embeds, axis=1, keepdims=True) + 1e-8)
+        else:
+            self.segment_text_embeddings = np.zeros((0, self.text_encoder.dim), dtype=np.float32)
+            
+        print(f"[LectureRetriever] Text embeddings pre-computed in {time.time() - t0:.2f}s.")
 
         # Try to load the trained Stage 2 model; if missing, use text-only search
         self._model = None
@@ -50,22 +68,14 @@ class LectureRetriever:
     def _text_similarity_search(self, query: str, top_k: int) -> List[Dict]:
         """Fallback: rank segments by direct Sentence-BERT cosine similarity
         between the query and each segment's transcript + OCR text."""
+        if len(self.segment_text_embeddings) == 0:
+            return []
+            
         query_emb = self.text_encoder.encode([query])[0]  # (D,)
         query_emb = query_emb / (np.linalg.norm(query_emb) + 1e-8)
 
-        scores = []
-        for meta in self.metadata:
-            # Combine transcript and OCR text for matching
-            segment_text = (meta.get("transcript_text", "") + " " +
-                            meta.get("ocr_text", "")).strip()
-            if not segment_text:
-                scores.append(0.0)
-                continue
-            seg_emb = self.text_encoder.encode([segment_text])[0]
-            seg_emb = seg_emb / (np.linalg.norm(seg_emb) + 1e-8)
-            scores.append(float(np.dot(query_emb, seg_emb)))
-
-        scores = np.array(scores)
+        # Vectorized dot product against precomputed embeddings (extremely fast)
+        scores = np.dot(self.segment_text_embeddings, query_emb)
         top_idx = np.argsort(-scores)[:top_k]
 
         results = []

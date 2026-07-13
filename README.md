@@ -262,3 +262,8 @@ uvicorn app.backend.main:app --reload --port 8000
 - OCR is the most expensive step at scale; consider running it only every
   N-th sampled frame and interpolating, or cropping tightly to the
   board/slide region via `src/feature_extraction/ocr_extractor.board_region`.
+
+
+
+  .\.venv\Scripts\python.exe scripts\run_full_pipeline.py --skip-training
+

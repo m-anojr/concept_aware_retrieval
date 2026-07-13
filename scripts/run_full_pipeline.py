@@ -247,12 +247,20 @@ def step_train_stage2(args):
 
     epochs = min(STAGE2.epochs, 20)
     best_val = float("inf")
+    
+    # Track losses for AI/ML presentation plotting
+    history_train = []
+    history_val = []
+    
     for epoch in range(1, epochs + 1):
         train_loss = run_epoch(model, train_loader, optimizer, args.device,
                                STAGE2.temperature, train=True)
         val_loss = (run_epoch(model, val_loader, optimizer, args.device,
                               STAGE2.temperature, train=False)
                     if val_loader else train_loss)
+
+        history_train.append(train_loss)
+        history_val.append(val_loss)
 
         if epoch % 5 == 0 or epoch == epochs:
             print(f"    Epoch {epoch:3d}/{epochs} — train={train_loss:.4f} val={val_loss:.4f}")
@@ -271,6 +279,25 @@ def step_train_stage2(args):
                     "fusion_mode": "cross_attention",
                 },
             }, ckpt_path)
+
+    # Generate a beautiful matplotlib plot for the presentation
+    try:
+        import matplotlib.pyplot as plt
+        plt.figure(figsize=(8, 5))
+        plt.plot(range(1, epochs + 1), history_train, label="Train Loss (InfoNCE)", marker='o')
+        if val_loader:
+            plt.plot(range(1, epochs + 1), history_val, label="Validation Loss", marker='s')
+        plt.title("Stage 2: Cross-Modal Retrieval Model Training")
+        plt.xlabel("Epoch")
+        plt.ylabel("Contrastive Loss")
+        plt.legend()
+        plt.grid(True, linestyle='--', alpha=0.7)
+        plot_path = os.path.join(PATHS.data_dir, "training_loss_curve.png")
+        plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"  [OK] Saved training loss curve plot to: {plot_path} (Perfect for your presentation!)")
+    except Exception as e:
+        print(f"  [!] Could not plot loss curve: {e}")
 
     print(f"  [OK] Stage 2 trained — best val loss: {best_val:.4f}")
     return True
