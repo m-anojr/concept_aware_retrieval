@@ -390,7 +390,7 @@
       ⚠️ These results have low confidence scores. The search model may need more training data for better accuracy. Results are ranked by text similarity as a fallback.
     </div>
 
-    <div id="status" class="status"></div>
+    <div id="status" class="status" role="status" aria-live="polite"></div>
     <section id="videoPlayer" class="video-player" aria-label="Lecture video player" hidden>
       <div class="video-player-header">
         <div id="videoPlayerStatus" class="video-player-status" role="status" aria-live="polite"></div>
@@ -484,17 +484,16 @@
         if (!data.results || data.results.length === 0) {
           statusEl.textContent = "";
           resultsEl.innerHTML = `
-            <div class="empty-state">
+            <div class="empty-state" role="alert">
               <div class="emoji">🔍</div>
-              <p>No results found for "${escapeHtml(query)}".</p>
-              <p style="margin-top:8px; font-size:0.82rem;">Make sure the index has been built.</p>
+              <p>${escapeHtml(data.message || "Not found in video archive.")}</p>
             </div>`;
           return;
         }
 
         // Check confidence
         const avgScore = data.results.reduce((s, r) => s + r.score, 0) / data.results.length;
-        if (avgScore < 0.2) {
+        if (avgScore < 0.4) {
           warningEl.style.display = "block";
         }
 

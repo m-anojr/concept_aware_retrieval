@@ -107,7 +107,10 @@ def search(q: str = Query(..., description="Free-text concept query"),
     try:
         # Pass a URL template that points to the mounted raw videos directory
         results = retriever.search(q, top_k=top_k, video_url_template="/videos/{video_id}.mp4#t={start}")
-        return {"query": q, "results": results}
+        response = {"query": q, "results": results}
+        if not results:
+            response["message"] = "Not found in video archive."
+        return response
     except Exception as e:
         traceback.print_exc()
         return {"query": q, "results": [], "error": str(e)}

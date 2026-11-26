@@ -1,6 +1,6 @@
 """
 Query-time retrieval: encode a free-text student query, search the FAISS
-index of segment embeddings, and return the top-k ranked
+index of segment embeddings, and return relevant ranked
 (video_id, start_time, end_time, ...) results with "jump to moment" links.
 
 When the FAISS model returns low-confidence results (which happens when the
@@ -21,6 +21,8 @@ from config import PATHS
 from src.stage2_retrieval.encoders import TextEncoder
 from src.stage2_retrieval.index_builder import load_stage2_model
 from src.utils.io_utils import load_json, format_timestamp
+
+MIN_RELEVANCE_SCORE = 0.35
 
 
 class LectureRetriever:
@@ -164,8 +166,12 @@ class LectureRetriever:
         return self._finalize_results(merged[:top_k], video_url_template)
 
     def _finalize_results(self, results: List[Dict], video_url_template: str) -> List[Dict]:
-        for r in results:
+        relevant_results = [
+            result for result in results
+            if result["score"] >= MIN_RELEVANCE_SCORE
+        ]
+        for r in relevant_results:
             r["jump_link"] = video_url_template.format(
                 video_id=r["video_id"], start=int(r["start_time"])
             )
-        return results
+        return relevant_results

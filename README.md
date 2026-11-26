@@ -186,6 +186,10 @@ uvicorn app.backend.main:app --reload --port 8000
 ```
 Open `http://localhost:8000` and search.
 
+Search results are shown only when their relevance score is at least `0.35`.
+If no indexed segment meets that threshold, the app displays `Not found in
+video archive` instead of returning unrelated video moments.
+
 ---
 
 ## 5. Notes on running your own lecture videos
